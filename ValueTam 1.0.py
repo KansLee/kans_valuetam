@@ -9,7 +9,7 @@ import requests
 # 페이지 기본 설정
 st.set_page_config(page_title="S&P 500 Valuation Pro (Personal Master)", layout="wide")
 st.title("📊 미국 주식 맞춤형 밸류에이션 프로 터미널")
-st.write("CFA & 워런 버핏 팩터 통합 엔진: 심플 스캐너 팁 & 팩터 심층 해설 도움말 완비")
+st.write("Made by Kans Lee 2026.07.21")
 
 # ---------------------------------------------------------
 # 1. 한글-영문 병기 사전 및 표준 정렬 순서 (EBITDA 삭제 완료)
