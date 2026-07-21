@@ -294,12 +294,28 @@ eps_mode = st.sidebar.radio("1️⃣ EPS/손익계산서/현금흐름표 산출�
 bps_mode = st.sidebar.radio("2️⃣ BPS 산출 방식", ("보통주 자본 기준 (우선주 제외 - 표준)", "전체 자본 기준 (우선주 포함)"))
 
 # ---------------------------------------------------------
-# 6. 금액/수직비율 전환 포맷터
+# 6. 금액/수직비율 전환 포맷터 (금융주/현금흐름표 중복 제거 로직 탑재)
 # ---------------------------------------------------------
-def format_financial_table(series, col_name, order_list, trans_dict, mode="amount", base_key=None):
+def format_financial_table(series, col_name, order_list, trans_dict, mode="amount", base_key=None, sector=None):
+    # 1. 금융주가 아닐 경우 불필요한 금융사 전용 항목 제거
+    is_financial = sector in ["Financials", "Financial Services", "Financial"] or "Financial" in str(sector) or "금융" in str(sector)
+    if not is_financial and order_list == IS_ORDER:
+        financial_only_keys = ["Total Net Revenue", "Operating Revenue", "Net Interest Income", "Provision For Loan Lease And Other Losses"]
+        order_list = [k for k in order_list if k not in financial_only_keys]
+
     ordered_keys = [k for k in order_list if k in series.index]
     remaining_keys = [k for k in series.index if k not in order_list and not pd.isna(series[k])]
     valid_keys = [k for k in (ordered_keys + remaining_keys) if not pd.isna(series[k])]
+    
+    # 2. 현금흐름표 3대 항목 동의어 중복 노출 방지 로직
+    if order_list == CF_ORDER:
+        if "Operating Cash Flow" in valid_keys and "Cash Flow From Continuing Operating Activities" in valid_keys:
+            valid_keys.remove("Cash Flow From Continuing Operating Activities")
+        if "Investing Cash Flow" in valid_keys and "Cash Flow From Continuing Investing Activities" in valid_keys:
+            valid_keys.remove("Cash Flow From Continuing Investing Activities")
+        if "Financing Cash Flow" in valid_keys and "Cash Flow From Continuing Financing Activities" in valid_keys:
+            valid_keys.remove("Cash Flow From Continuing Financing Activities")
+
     sorted_series = series.loc[valid_keys]
     df = sorted_series.to_frame(name=col_name).astype(object)
 
@@ -586,10 +602,10 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
         display_mode = st.radio("표시 방식 선택:", ["💰 금액 표기 (Dollar Amount)", "📐 수직비율 표기 (Common-Size %)"], horizontal=True, key="disp_mode_tab1")
         tab_is, tab_bs, tab_cf = st.tabs([f"📈 손익계산서 ({data['inc_label']})", "🏛️ 재무상태표", f"💵 현금흐름표 ({data['inc_label']})"])
         
-        # 🔥 수정된 부분: st.column_config.IndexColumn -> st.column_config.Column 으로 완벽 수정
-        with tab_is: st.dataframe(format_financial_table(data["inc_series"], data["inc_label"], IS_ORDER, IS_TRANSLATIONS, display_mode, "Total Revenue"), use_container_width=True, column_config={"_index": st.column_config.Column(width=130)})
-        with tab_bs: st.dataframe(format_financial_table(data["bs_series"], "최신 공시 장부 금액", BS_ORDER, BS_TRANSLATIONS, display_mode, "Total Assets"), use_container_width=True, column_config={"_index": st.column_config.Column(width=130)})
-        with tab_cf: st.dataframe(format_financial_table(data["cf_series"], data["inc_label"], CF_ORDER, CF_TRANSLATIONS, display_mode, "Operating Cash Flow"), use_container_width=True, column_config={"_index": st.column_config.Column(width=130)})
+        # 🔥 수정된 부분: sector 인자를 전달하여 금융주 제외 일반주식의 불필요한 영업수익/이자수익 항목 및 현금흐름표 중복 노출을 스마트 필터링합니다.
+        with tab_is: st.dataframe(format_financial_table(data["inc_series"], data["inc_label"], IS_ORDER, IS_TRANSLATIONS, display_mode, "Total Revenue", gics_sector), use_container_width=True, column_config={"_index": st.column_config.Column(width=130)})
+        with tab_bs: st.dataframe(format_financial_table(data["bs_series"], "최신 공시 장부 금액", BS_ORDER, BS_TRANSLATIONS, display_mode, "Total Assets", gics_sector), use_container_width=True, column_config={"_index": st.column_config.Column(width=130)})
+        with tab_cf: st.dataframe(format_financial_table(data["cf_series"], data["inc_label"], CF_ORDER, CF_TRANSLATIONS, display_mode, "Operating Cash Flow", gics_sector), use_container_width=True, column_config={"_index": st.column_config.Column(width=130)})
 
         st.divider()
 
@@ -719,7 +735,6 @@ elif main_nav == "⚖️ 2. 관심종목 10대 팩터 비교 스캐너":
             comp_df = pd.DataFrame(comp_data).T
             comp_df.index.name = "종목명 (Ticker & Name)"
             
-            # 🔥 수정된 부분: 여기도 완벽 수정
             st.dataframe(comp_df, use_container_width=True, height=580, column_config={"_index": st.column_config.Column(width=130)})
             
             st.write("")
