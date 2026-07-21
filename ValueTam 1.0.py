@@ -303,7 +303,7 @@ def format_financial_table(series, col_name, order_list, trans_dict, mode="amoun
     remaining_keys = [k for k in series.index if k not in order_list and not pd.isna(series[k])]
     valid_keys = [k for k in (ordered_keys + remaining_keys) if not pd.isna(series[k])]
     sorted_series = series.loc[valid_keys]
-    df = sorted_series.to_frame(name=col_name)
+    df = sorted_series.to_frame(name=col_name).astype(object)
 
     base_val = 0
     if base_key and base_key in df.index and df.loc[base_key, col_name] != 0: base_val = df.loc[base_key, col_name]
