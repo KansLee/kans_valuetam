@@ -8,7 +8,7 @@ import requests
 
 # 페이지 기본 설정
 st.set_page_config(page_title="S&P 500 Valuation Pro (Personal Master)", layout="wide")
-st.title("📊 미증시 종목분석 터미널")
+st.title("📊 미증시 분석 터미널")
 st.write("Made by Kans Lee 2026.07.21")
 
 # ---------------------------------------------------------
