@@ -602,6 +602,14 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
             with t1: draw_annual_chart(chart_df[["Custom PER (배)", "S&P 500 시장 평균 PER"]], "", "Custom PER (배)", "#ff7f0e")
             with t2: draw_annual_chart(chart_df[["Custom PBR (배)", "S&P 500 시장 평균 PBR"]], "", "Custom PBR (배)", "#2ca02c")
 
+            # 🔥 추가된 부분: PER, PBR 판독 설명 파란색 상자(st.info) 완벽 탑재!
+            st.write("")
+            st.info("""
+            💡 **[PER·PBR 역사적 추이 판독 가이드]**
+            * 📈 **PER (주가수익비율):** 주가가 기업의 1주당 순이익(EPS) 대비 몇 배로 거래되는지 보여줍니다. 과거 5년 궤적 및 S&P 500 시장 평균과 비교하여 현재 주가의 밸류에이션 수준이 저평가인지 고평가인지 판단하는 핵심 척도가 됩니다.
+            * 📊 **PBR (주가순자산비율):** 주가가 기업의 1주당 순자산(BPS) 대비 몇 배인지 나타냅니다. **⚠️ 핵심 포인트: 애플(AAPL)처럼 꾸준히 막대한 자사주를 매입하고 소각하는 기업은 회계상 장부 순자산(자기자본)이 감소하여 PBR이 30배~100배 이상 극단적으로 높게 나오는 것이 지극히 정상입니다.** 따라서 미국 주주환원 우량주를 분석할 때 PBR이 높다고 단순 고평가로 판단해서는 안 되며, 기업의 실질 현금창출력(FCF)과 PER을 함께 검증해야 합니다.
+            """)
+
         st.divider()
 
         st.markdown("### 📑 맞춤형 3대 재무제표 (SEC 공시 원물 기준)")
@@ -713,7 +721,6 @@ elif main_nav == "⚖️ 2. 관심종목 10대 팩터 비교 스캐너":
                 if res:
                     r = calculate_key_ratios(res["inc_series"], res["bs_series"], res["cf_series"], res["sector"], res["market_cap"], res["beta"], res.get("shares", 1), res.get("div_yield", "0.00%"), res.get("payout_ratio", "0.0%"), res["adjusted_equity"])
                     
-                    # 🔥 괄호 및 영문 추가 설명 완전 삭제 적용
                     comp_data[f"{sym} ({res['name']})"] = {
                         "01. 섹터": res["sector"],
                         "02. 현재 주가": f"${res['price']:,.2f}",
