@@ -208,7 +208,6 @@ def draw_annual_chart(df, title, y_col, color_hex="#1f77b4"):
     df_reset = df.reset_index()
     date_col = df_reset.columns[0]
     
-    # [수정] .interactive()를 제거하여 마우스 휠 줌 및 드래그 패닝을 비활성화
     chart = alt.Chart(df_reset).mark_line(color=color_hex).encode(
         x=alt.X(f'{date_col}:T', axis=alt.Axis(format='%Y', title='', tickCount=5)),
         y=alt.Y(f'{y_col}:Q', title=y_col),
@@ -238,7 +237,6 @@ with st.spinner("미국 시가총액 종목 데이터베이스 로딩 중..."):
 
 all_symbols = sp500_df["Symbol"].tolist() if not sp500_df.empty else list(POPULAR_KOR.values())
 
-# [세션 스테이트 초기화 & on_click 정품 콜백 함수 정의]
 if "watchlist_widget" not in st.session_state:
     default_watchlist = ["CMCSA", "AAPL", "MSFT", "NVDA", "JPM"]
     valid_defaults = [s for s in default_watchlist if s in all_symbols]
@@ -587,9 +585,11 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
         st.markdown("### 📑 맞춤형 3대 재무제표 (SEC 공시 원물 기준)")
         display_mode = st.radio("표시 방식 선택:", ["💰 금액 표기 (Dollar Amount)", "📐 수직비율 표기 (Common-Size %)"], horizontal=True, key="disp_mode_tab1")
         tab_is, tab_bs, tab_cf = st.tabs([f"📈 손익계산서 ({data['inc_label']})", "🏛️ 재무상태표", f"💵 현금흐름표 ({data['inc_label']})"])
-        with tab_is: st.dataframe(format_financial_table(data["inc_series"], data["inc_label"], IS_ORDER, IS_TRANSLATIONS, display_mode, "Total Revenue"), use_container_width=True, column_config={"_index": st.column_config.IndexColumn(width=130)})
-        with tab_bs: st.dataframe(format_financial_table(data["bs_series"], "최신 공시 장부 금액", BS_ORDER, BS_TRANSLATIONS, display_mode, "Total Assets"), use_container_width=True, column_config={"_index": st.column_config.IndexColumn(width=130)})
-        with tab_cf: st.dataframe(format_financial_table(data["cf_series"], data["inc_label"], CF_ORDER, CF_TRANSLATIONS, display_mode, "Operating Cash Flow"), use_container_width=True, column_config={"_index": st.column_config.IndexColumn(width=130)})
+        
+        # 🔥 수정된 부분: st.column_config.IndexColumn -> st.column_config.Column 으로 완벽 수정
+        with tab_is: st.dataframe(format_financial_table(data["inc_series"], data["inc_label"], IS_ORDER, IS_TRANSLATIONS, display_mode, "Total Revenue"), use_container_width=True, column_config={"_index": st.column_config.Column(width=130)})
+        with tab_bs: st.dataframe(format_financial_table(data["bs_series"], "최신 공시 장부 금액", BS_ORDER, BS_TRANSLATIONS, display_mode, "Total Assets"), use_container_width=True, column_config={"_index": st.column_config.Column(width=130)})
+        with tab_cf: st.dataframe(format_financial_table(data["cf_series"], data["inc_label"], CF_ORDER, CF_TRANSLATIONS, display_mode, "Operating Cash Flow"), use_container_width=True, column_config={"_index": st.column_config.Column(width=130)})
 
         st.divider()
 
@@ -719,7 +719,8 @@ elif main_nav == "⚖️ 2. 관심종목 10대 팩터 비교 스캐너":
             comp_df = pd.DataFrame(comp_data).T
             comp_df.index.name = "종목명 (Ticker & Name)"
             
-            st.dataframe(comp_df, use_container_width=True, height=580, column_config={"_index": st.column_config.IndexColumn(width=130)})
+            # 🔥 수정된 부분: 여기도 완벽 수정
+            st.dataframe(comp_df, use_container_width=True, height=580, column_config={"_index": st.column_config.Column(width=130)})
             
             st.write("")
             st.info("""
