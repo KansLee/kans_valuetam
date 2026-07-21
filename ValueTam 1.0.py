@@ -310,7 +310,6 @@ def format_financial_table(series, col_name, order_list, trans_dict, mode="amoun
         order_list = [k for k in order_list if k not in financial_only_keys]
 
     ordered_keys = [k for k in order_list if k in series.index]
-    # 제외 목록(excluded_keys)에 포함된 항목은 남은 항목(remaining_keys)으로 절대 들어오지 못하게 차단
     remaining_keys = [k for k in series.index if k not in order_list and k not in excluded_keys and not pd.isna(series[k])]
     valid_keys = [k for k in (ordered_keys + remaining_keys) if not pd.isna(series[k]) and k not in excluded_keys]
     
@@ -609,7 +608,6 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
         display_mode = st.radio("표시 방식 선택:", ["💰 금액 표기 (Dollar Amount)", "📐 수직비율 표기 (Common-Size %)"], horizontal=True, key="disp_mode_tab1")
         tab_is, tab_bs, tab_cf = st.tabs([f"📈 손익계산서 ({data['inc_label']})", "🏛️ 재무상태표", f"💵 현금흐름표 ({data['inc_label']})"])
         
-        # 🔥 수정된 부분: 인덱스(계정 항목명) 너비를 130에서 170으로 살짝 늘려 가독성을 확보했습니다.
         with tab_is: st.dataframe(format_financial_table(data["inc_series"], data["inc_label"], IS_ORDER, IS_TRANSLATIONS, display_mode, "Total Revenue", gics_sector), use_container_width=True, column_config={"_index": st.column_config.Column(width=170)})
         with tab_bs: st.dataframe(format_financial_table(data["bs_series"], "최신 공시 장부 금액", BS_ORDER, BS_TRANSLATIONS, display_mode, "Total Assets", gics_sector), use_container_width=True, column_config={"_index": st.column_config.Column(width=170)})
         with tab_cf: st.dataframe(format_financial_table(data["cf_series"], data["inc_label"], CF_ORDER, CF_TRANSLATIONS, display_mode, "Operating Cash Flow", gics_sector), use_container_width=True, column_config={"_index": st.column_config.Column(width=170)})
@@ -715,34 +713,34 @@ elif main_nav == "⚖️ 2. 관심종목 10대 팩터 비교 스캐너":
                 if res:
                     r = calculate_key_ratios(res["inc_series"], res["bs_series"], res["cf_series"], res["sector"], res["market_cap"], res["beta"], res.get("shares", 1), res.get("div_yield", "0.00%"), res.get("payout_ratio", "0.0%"), res["adjusted_equity"])
                     
+                    # 🔥 괄호 및 영문 추가 설명 완전 삭제 적용
                     comp_data[f"{sym} ({res['name']})"] = {
-                        "01. 섹터 (GICS)": res["sector"],
+                        "01. 섹터": res["sector"],
                         "02. 현재 주가": f"${res['price']:,.2f}",
                         "03. ★ 맞춤형 PER": f"{res['per']:.2f} 배",
                         "04. ★ 맞춤형 PBR": f"{res['pbr']:.2f} 배",
                         "05. ★ P / FCF": r["p_fcf"],
-                        "06. 자기자본이익률 (ROE)": r["roe"],
-                        "07. 총자산순이익률 (ROA)": r["roa"],
-                        "08. 투하자본수익률 (ROIC)": r["roic"],
-                        "09. 가중평균자본비용 (WACC)": r["wacc"],
-                        "10. 매출총이익률 (Gross Margin)": r["gross_margin"],
-                        "11. 영업이익률 (Op Margin)": r["op_margin"],
-                        "12. 당기순이익률 (Net Margin)": r["net_margin"],
-                        "13. 부채비율 (Debt to Equity)": r["debt_to_equity"],
-                        "14. 배당수익률 (Div Yield)": r["div_yield"],
-                        "15. 배당성향 (Payout Ratio)": r["payout_ratio"],
-                        "16. ★ 주당 FCF (FCFPS)": r["fcf_per_share"],
-                        "17. ★ FCF / 순이익 (전환율)": r["fcf_to_ni"],
-                        "18. ★ 설비투자부담률 (CapEx/OCF)": r["capex_ratio"],
+                        "06. 자기자본이익률": r["roe"],
+                        "07. 총자산순이익률": r["roa"],
+                        "08. 투하자본수익률": r["roic"],
+                        "09. 가중평균자본비용": r["wacc"],
+                        "10. 매출총이익률": r["gross_margin"],
+                        "11. 영업이익률": r["op_margin"],
+                        "12. 당기순이익률": r["net_margin"],
+                        "13. 부채비율": r["debt_to_equity"],
+                        "14. 배당수익률": r["div_yield"],
+                        "15. 배당성향": r["payout_ratio"],
+                        "16. ★ 주당 FCF": r["fcf_per_share"],
+                        "17. ★ FCF / 순이익": r["fcf_to_ni"],
+                        "18. ★ 설비투자부담률": r["capex_ratio"],
                     }
                 else:
-                    comp_data[f"{sym} (데이터 오류)"] = {"01. 섹터 (GICS)": "로드 실패"}
+                    comp_data[f"{sym} (데이터 오류)"] = {"01. 섹터": "로드 실패"}
 
         if comp_data:
             comp_df = pd.DataFrame(comp_data).T
             comp_df.index.name = "종목명 (Ticker & Name)"
             
-            # 🔥 스캐너 표의 계정명 너비도 170으로 통일했습니다.
             st.dataframe(comp_df, use_container_width=True, height=580, column_config={"_index": st.column_config.Column(width=170)})
             
             st.write("")
