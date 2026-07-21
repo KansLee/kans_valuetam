@@ -628,7 +628,7 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
         is_financial_tab1 = gics_sector in ["Financials", "Financial Services", "Financial"] or "Financial" in str(gics_sector) or "금융" in str(gics_sector)
 
         if is_financial_tab1:
-            st.markdown("#### 🏦 금융주 핵심 팩터 (Financials Key Factors)")
+            st.markdown("#### 🏦 금융주 핵심 팩터 ")
             st.caption("은행, 증권 등 금융회사의 특성을 반영하여 주주환원, 수익성, 건전성, 자본비용 등 7대 핵심 지표만 집중적으로 평가합니다.")
             
             f1_c1, f1_c2, f1_c3, f1_c4 = st.columns(4, gap="large")
@@ -645,7 +645,7 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
             f2_c4.empty()
 
         else:
-            st.markdown("#### 📈 1. 수익성 & 비용 (Profitability & Cost)")
+            st.markdown("#### 📈 1. 수익성 & 비용 ")
             r1_c1, r1_c2, r1_c3, r1_c4 = st.columns(4, gap="large")
             r1_c1.metric("매출총이익률", ratios["gross_margin"], "수익성 (>40% 해자)", delta_color="off")
             r1_c2.metric("영업이익률", ratios["op_margin"], "핵심 영업 수익성", delta_color="off")
@@ -653,7 +653,7 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
             r1_c4.metric("가중평균자본비용(WACC)", ratios["wacc"], "자본비용(요구수익률)", delta_color="off")
             st.write("")
 
-            st.markdown("#### 💎 2. 효율성 & 안정성 (Efficiency & Stability)")
+            st.markdown("#### 💎 2. 효율성 & 안정성 ")
             r2_c1, r2_c2, r2_c3, r2_c4 = st.columns(4, gap="large")
             r2_c1.metric("자기자본이익률 (ROE)", ratios["roe"], "주주지분 효율성", delta_color="off")
             r2_c2.metric("총자산순이익률 (ROA)", ratios["roa"], "총자산 효율성", delta_color="off")
@@ -661,7 +661,7 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
             r2_c4.metric("부채비율", ratios["debt_to_equity"], "재무안정성 지표", delta_color="off")
             st.write("")
 
-            st.markdown("#### 💰 3. 주주환원 & 투자 (Shareholder Return & Investment)")
+            st.markdown("#### 💰 3. 주주환원 & 투자 ")
             r3_c1, r3_c2, r3_c3, r3_c4 = st.columns(4, gap="large")
             r3_c1.metric("배당수익률", ratios["div_yield"], "선행(Forward) 기준", delta_color="off")
             r3_c2.metric("배당성향", ratios["payout_ratio"], "TTM(1년 합산) 기준", delta_color="off")
@@ -669,7 +669,7 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
             r3_c4.empty()
             st.write("")
 
-            st.markdown("#### 💵 4.  FCF 라인 (Free Cash Flow)")
+            st.markdown("#### 💵 4.  Free Cash Flow 라인 ")
             r4_c1, r4_c2, r4_c3, r4_c4 = st.columns(4, gap="large")
             r4_c1.metric("★ 주당 FCF (FCFPS)", ratios["fcf_per_share"], "1주당 창출 순현금", delta_color="off")
             r4_c2.metric("★ FCF/매출", ratios["fcf_margin"], "매출 대비 순현금 창출", delta_color="off")
