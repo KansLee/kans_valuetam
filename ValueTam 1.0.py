@@ -224,7 +224,10 @@ def draw_small_factor_chart(df, y_col, color_hex="#1f77b4"):
         tooltip=[alt.Tooltip(f'{date_col}:T', format='%Y-%m', title='날짜'), alt.Tooltip(f'{y_col}:Q', format=',.2f', title=y_col)]
     ).properties(
         height=140,
-        title=alt.TitleParams(text=y_col, fontSize=13, fontWeight='bold', anchor='start', color='#2c3e50')
+        title=alt.TitleParams(text=y_col, fontSize=13, fontWeight='bold', anchor='start', color='#2c3e50', offset=15),
+        padding={"top": 15, "bottom": 5, "left": 5, "right": 5} # 상단 텍스트 잘림 방지용 여백 추가
+    ).configure_view(
+        strokeWidth=0
     )
     st.altair_chart(chart, use_container_width=True)
 
@@ -610,13 +613,18 @@ def get_3y_factor_trends(ticker, current_ratios, eps_opt, bps_opt, is_financial,
         prices = hist_3y["Close"].dropna()
         dates = prices.index.tz_localize(None) if prices.index.tz is not None else prices.index
         n = len(prices)
-        p_norm = prices / prices.iloc[-1]
+        
+        # [핵심 수정 1] 타임존 충돌로 인한 NaN 발생 방지를 위해 numpy array로 변환
+        p_norm = prices.values / prices.values[-1]
         
         inc = stock.income_stmt
         bs = stock.balance_sheet
         cf = stock.cashflow
         
         def parse_val(val_str, default=0.0):
+            if isinstance(val_str, (int, float)):
+                if np.isnan(val_str): return default
+                return float(val_str)
             if not isinstance(val_str, str) or any(w in val_str for w in ["N/A", "제외", "적자", "음수", "실패", "nan"]):
                 return default
             clean = val_str.replace("%", "").replace("배", "").replace("$", "").replace(",", "").strip()
@@ -898,7 +906,7 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
             r4_c3.metric("★ FCF/당기순이익", ratios["fcf_to_ni"], "이익의 현금화 질(Quality)", delta_color="off")
             r4_c4.metric("★ P/FCF", ratios["p_fcf"], "PER 대비 진짜 저평가", delta_color="off")
 
-        # --- 🔥 신규 추가: 최근 3개년 핵심 팩터 지표 추이 (Small Multiples) ---
+        # --- 최근 3개년 핵심 팩터 지표 추이 (Small Multiples) ---
         st.write("")
         st.divider()
         st.markdown("### 📉 최근 3개년 핵심 팩터 지표 추이 (Small Multiples)")
