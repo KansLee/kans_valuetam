@@ -115,7 +115,7 @@ POPULAR_KOR = {
     "엑슨모빌 (XOM)": "XOM",
     "마스터카드 (MA)": "MA",
     "코스트코 홀세일 (COST)": "COST",
-    "존슨앤드존슨 (JNJ)": "JNJ",
+    "존슨앤존슨 (JNJ)": "JNJ",
     "홈디포 (HD)": "HD",
     "프로터 앤 갬블 (PG)": "PG",
     "넷플릭스 (NFLX)": "NFLX",
@@ -161,7 +161,7 @@ POPULAR_KOR = {
     "록히드 마틴 (LMT)": "LMT",
     "허니웰 (HON)": "HON",
     "메드트로닉 (MDT)": "MDT",
-    "모디스 (MCO)": "MCO",
+    "디스 (MCO)": "MCO",
     "램 리서치 (LRCX)": "LRCX",
     "블랙록 (BLK)": "BLK",
     "핀듀오듀오 (PDD)": "PDD",
@@ -284,7 +284,7 @@ def switch_to_scanner_callback():
 # 5. 좌측 사이드바
 # ---------------------------------------------------------
 st.sidebar.header("⚙️ 1. 개별 정밀 분석 종목 선택")
-list_mode = st.sidebar.radio("📂 선택 방식", ["🔥 시가총액 & 한국 인기 종목", "📋 S&P 500 전체 목록"])
+list_mode = st.sidebar.radio("📂 선택 방식", ["🔥 시가총액 상위 100 목록", "📋 S&P 500 전체 목록"])
 
 if "인기 종목" in list_mode:
     selected_label = st.sidebar.selectbox("목록에서 선택:", options=list(POPULAR_KOR.keys()), index=0)
