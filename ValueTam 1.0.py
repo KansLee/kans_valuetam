@@ -419,7 +419,7 @@ def format_financial_table(series, col_name, order_list, trans_dict, mode="amoun
     return final_df
 
 # ---------------------------------------------------------
-# 7. 개별 종목 데이터 크롤링 엔진 (옵션 연동 데이터 증발 현상 완벽 해결)
+# 7. 개별 종목 데이터 크롤링 엔진 (영문 비즈니스 요약 추가)
 # ---------------------------------------------------------
 @st.cache_data(ttl=3600)
 def get_custom_multiples(ticker, eps_opt, bps_opt):
@@ -443,6 +443,9 @@ def get_custom_multiples(ticker, eps_opt, bps_opt):
         pr = stock.info.get("payoutRatio", 0)
         pr_str = f"{(pr * 100):.1f}%" if pr and pr <= 1.0 else f"{pr:.1f}%"
 
+        # 🔥 영문 비즈니스 요약 원문 추출
+        business_summary = stock.info.get("longBusinessSummary", "No business summary available.")
+
         q_income = stock.quarterly_income_stmt
         q_bs = stock.quarterly_balance_sheet
         q_cf = stock.quarterly_cashflow
@@ -450,7 +453,6 @@ def get_custom_multiples(ticker, eps_opt, bps_opt):
         if current_price > 0 and not q_income.empty and not q_bs.empty:
             q_inc_4 = q_income.iloc[:, :4].dropna(how="all").bfill(axis=1).fillna(0)
             
-            # 🔥 [핵심 수정] 옵션별 연환산 적용 시 원본 데이터 프레임/시리즈 구조가 깨지지 않도록 배수 처리만 안전하게 수행
             if "1년 전체" in eps_opt:
                 custom_inc_series = q_inc_4.sum(axis=1)
                 inc_label = "최근 1년 전체 합산"
@@ -493,7 +495,7 @@ def get_custom_multiples(ticker, eps_opt, bps_opt):
                 "inc_series": custom_inc_series, "bs_series": latest_bs_series, "cf_series": custom_cf_series,
                 "inc_label": inc_label, "beta": beta, "market_cap": market_cap,
                 "div_yield": dy_str, "payout_ratio": pr_str, "shares": shares,
-                "adjusted_equity": target_equity
+                "adjusted_equity": target_equity, "summary": business_summary
             }
     except Exception: return None
     return None
@@ -724,6 +726,10 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
         c_title, c_star, c_nav = st.columns([2.5, 1.1, 1.1])
         with c_title:
             st.subheader(f"🏢 {data['name']} ({final_ticker})")
+            
+            # 🔥 [요청 반영] 종목명과 현재 주가 사이에 영문 비즈니스 개요 원문 배치
+            st.markdown(f"<p style='color: #555555; font-size: 14px; margin-bottom: 8px;'><i>{data['summary']}</i></p>", unsafe_allow_html=True)
+            
             st.caption(f"현재 주가: **${data['price']:,.2f}** | 섹터: **`{gics_sector}`** | 적용 모드: **`{data['inc_label']}`**")
         with c_star:
             st.write("")
