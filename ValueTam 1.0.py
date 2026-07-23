@@ -576,7 +576,7 @@ def get_3y_factor_trends(ticker, current_ratios, eps_opt, bps_opt, is_financial,
         dates = prices.index.tz_localize(None) if prices.index.tz is not None else prices.index
         n = len(prices)
         
-        p_norm = prices.values / prices.values[-1]
+        # 주가 연동 추정 로직을 전면 삭제했으므로 p_norm 변수도 삭제
         
         inc = stock.income_stmt
         bs = stock.balance_sheet
@@ -640,19 +640,10 @@ def get_3y_factor_trends(ticker, current_ratios, eps_opt, bps_opt, is_financial,
             except: return np.nan
             return np.nan
 
-        def generate_series(ratio_key, r_type, is_price_direct=False, is_price_inverse=False):
+        def generate_series(ratio_key, r_type):
             curr = parse_val(current_ratios.get(ratio_key, "0"))
             if curr == 0 and "N/A" in str(current_ratios.get(ratio_key, "")):
                 return None
-            
-            if is_price_direct:
-                final_arr = curr * p_norm
-                final_arr[-1] = curr
-                return np.round(final_arr, 2)
-            elif is_price_inverse:
-                final_arr = curr / p_norm
-                final_arr[-1] = curr
-                return np.round(final_arr, 2)
             
             pts = []
             if not inc.empty and len(inc.columns) >= 3:
@@ -670,34 +661,44 @@ def get_3y_factor_trends(ticker, current_ratios, eps_opt, bps_opt, is_financial,
 
         df_res = pd.DataFrame(index=dates)
         
+        # 🔥 주가 연동 추정 지표(P/FCF, 배당수익률) 삭제 및 100% 팩트 지표(ROA, 당기순이익률) 교체
         if not is_financial:
             s_roe = generate_series("roe", "roe")
             if s_roe is not None: df_res["ROE (%)"] = s_roe
+            
+            s_roa = generate_series("roa", "roa")
+            if s_roa is not None: df_res["ROA (%)"] = s_roa
+            
             s_roic = generate_series("roic", "roic")
             if s_roic is not None: df_res["ROIC (%)"] = s_roic
+            
             s_op = generate_series("op_margin", "op_margin")
             if s_op is not None: df_res["영업이익률 (%)"] = s_op
+            
+            s_net = generate_series("net_margin", "net_margin")
+            if s_net is not None: df_res["당기순이익률 (%)"] = s_net
+            
             s_fcf_m = generate_series("fcf_margin", "fcf_margin")
             if s_fcf_m is not None: df_res["FCF 마진 (%)"] = s_fcf_m
-            s_pfcf = generate_series("p_fcf", "p_fcf", is_price_direct=True)
-            if s_pfcf is not None: df_res["P / FCF (배)"] = s_pfcf
+            
             s_de = generate_series("debt_to_equity", "debt_to_equity")
             if s_de is not None: df_res["부채비율 (%)"] = s_de
+            
             s_cap = generate_series("capex_ratio", "capex_ratio")
             if s_cap is not None: df_res["설비투자부담률 (%)"] = s_cap
-            s_div = generate_series("div_yield", "div_yield", is_price_inverse=True)
-            if s_div is not None: df_res["배당수익률 (%)"] = s_div
         else:
             s_roe = generate_series("roe", "roe")
             if s_roe is not None: df_res["ROE (%)"] = s_roe
+            
             s_roa = generate_series("roa", "roa")
             if s_roa is not None: df_res["ROA (%)"] = s_roa
+            
             s_net = generate_series("net_margin", "net_margin")
             if s_net is not None: df_res["당기순이익률 (%)"] = s_net
+            
             s_de = generate_series("debt_to_equity", "debt_to_equity")
             if s_de is not None: df_res["부채비율 (%)"] = s_de
-            s_div = generate_series("div_yield", "div_yield", is_price_inverse=True)
-            if s_div is not None: df_res["배당수익률 (%)"] = s_div
+            
             s_pay = generate_series("payout_ratio", "payout_ratio")
             if s_pay is not None: df_res["배당성향 (%)"] = s_pay
         
@@ -848,7 +849,7 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
         st.write("")
         st.divider()
         st.markdown("### 📉 최근 3개년 핵심 팩터 지표 추이 (Small Multiples)")
-        st.caption(f"선택하신 **[{eps_mode}]** 및 **[{bps_mode}]** 옵션과 과거 3년 주가/장부 데이터를 연동하여 산출한 3년 궤적입니다.")
+        st.caption(f"선택하신 **[{eps_mode}]** 및 **[{bps_mode}]** 옵션과 과거 3년 실제 SEC 원물 데이터를 연동하여 산출한 무결점 궤적입니다.")
         
         factor_3y_df = get_3y_factor_trends(final_ticker, ratios, eps_mode, bps_mode, is_financial_tab1, data["price"])
         if factor_3y_df is not None and not factor_3y_df.empty:
