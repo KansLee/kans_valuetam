@@ -5,7 +5,7 @@ import numpy as np
 import altair as alt
 from io import StringIO
 import requests
-import concurrent.futures  # 🔥 스캐너 속도 가속을 위한 병렬 처리 모듈 추가
+import concurrent.futures
 
 # 페이지 기본 설정
 st.set_page_config(page_title="S&P 500 Valuation Pro (Personal Master)", layout="wide")
@@ -201,7 +201,7 @@ POPULAR_KOR = {
 }
 
 # ---------------------------------------------------------
-# 3. Altair 차트 렌더링 함수 (대형 주가/PER/PBR용 및 소형 팩터용)
+# 3. Altair 차트 렌더링 함수 (대형 주가용 및 소형 팩터용)
 # ---------------------------------------------------------
 def draw_annual_chart(df, title, y_col, color_hex="#1f77b4"):
     st.markdown(f"#### {title}")
@@ -210,7 +210,7 @@ def draw_annual_chart(df, title, y_col, color_hex="#1f77b4"):
     
     chart = alt.Chart(df_reset).mark_line(color=color_hex).encode(
         x=alt.X(f'{date_col}:T', axis=alt.Axis(format='%Y', title='', tickCount=5)),
-        y=alt.Y(f'{y_col}:Q', title=y_col),
+        y=alt.Y(f'{y_col}:Q', title=y_col, scale=alt.Scale(zero=False)),
         tooltip=[alt.Tooltip(f'{date_col}:T', format='%Y-%m', title='날짜'), alt.Tooltip(f'{y_col}:Q', format=',.2f', title=y_col)]
     )
     st.altair_chart(chart, use_container_width=True)
@@ -492,7 +492,7 @@ def get_custom_multiples(ticker, eps_opt, bps_opt):
     return None
 
 # ---------------------------------------------------------
-# 8. 최근 5년 주가 및 궤적 차트 (가짜 데이터 전면 차단)
+# 8. 최근 5년 주가 차트 (단일 가격 정보 제공용)
 # ---------------------------------------------------------
 @st.cache_data(ttl=86400)
 def get_5y_price_history(ticker):
@@ -507,14 +507,8 @@ def get_5y_price_history(ticker):
     except Exception: pass
     return None
 
-@st.cache_data(ttl=86400)
-def get_5y_historical_chart_data(ticker, current_per, current_pbr):
-    # 🔥 [수정됨] 무료 API 특성상 5년 치의 정확한 PER/PBR 분모(EPS, BPS)를 가져올 수 없으므로
-    # 투자자에게 혼동을 주는 가짜 데이터(Synthetic Data) 생성 코드를 전면 삭제하고 안전하게 None을 반환합니다.
-    return None
-
 # ---------------------------------------------------------
-# 9. 12대 핵심 재무비율 스캐너 & 최근 3개년 팩터 지표 추이 (가짜 데이터 차단)
+# 9. 12대 핵심 재무비율 스캐너 & 최근 3개년 팩터 지표 추이 엔진
 # ---------------------------------------------------------
 def get_val(series, keys, default=0):
     for k in keys:
@@ -582,6 +576,8 @@ def get_3y_factor_trends(ticker, current_ratios, eps_opt, bps_opt, is_financial,
         dates = prices.index.tz_localize(None) if prices.index.tz is not None else prices.index
         n = len(prices)
         
+        p_norm = prices.values / prices.values[-1]
+        
         inc = stock.income_stmt
         bs = stock.balance_sheet
         cf = stock.cashflow
@@ -644,27 +640,31 @@ def get_3y_factor_trends(ticker, current_ratios, eps_opt, bps_opt, is_financial,
             except: return np.nan
             return np.nan
 
-        def generate_series(ratio_key, r_type):
-            # 🔥 [수정됨] 조작된 파동(Wave) 데이터 생성을 완전히 금지하고 순수하게 3개년 실제 데이터만 활용합니다.
+        def generate_series(ratio_key, r_type, is_price_direct=False, is_price_inverse=False):
             curr = parse_val(current_ratios.get(ratio_key, "0"))
             if curr == 0 and "N/A" in str(current_ratios.get(ratio_key, "")):
                 return None
             
+            if is_price_direct:
+                final_arr = curr * p_norm
+                final_arr[-1] = curr
+                return np.round(final_arr, 2)
+            elif is_price_inverse:
+                final_arr = curr / p_norm
+                final_arr[-1] = curr
+                return np.round(final_arr, 2)
+            
             pts = []
             if not inc.empty and len(inc.columns) >= 3:
-                for k in [2, 1, 0]: # T-2, T-1, Current 순서
-                    if r_type in ["p_fcf", "div_yield"]:
-                        # P/FCF나 배당수익률은 과거 시총/주당배당금 역산 제약이 있으므로 가짜 변동성을 주지 않고 상수 보수적 처리
-                        pts.append(curr)
-                    else:
-                        v = get_hist_sec_val(k, r_type)
-                        pts.append(v if not pd.isna(v) else curr)
+                for k in [2, 1, 0]:
+                    v = get_hist_sec_val(k, r_type)
+                    pts.append(v if not pd.isna(v) else curr)
             else:
-                return None # 데이터가 없으면 가짜 데이터를 만들지 않고 그냥 에러 리턴(차트 표시 안 함)
+                return None 
             
             pts[-1] = curr
             x_idx = [0, n // 2, n - 1]
-            final_arr = np.interp(np.arange(n), x_idx, pts) # 순수 선형 보간 처리
+            final_arr = np.interp(np.arange(n), x_idx, pts)
             final_arr[-1] = curr
             return np.round(final_arr, 2)
 
@@ -679,13 +679,13 @@ def get_3y_factor_trends(ticker, current_ratios, eps_opt, bps_opt, is_financial,
             if s_op is not None: df_res["영업이익률 (%)"] = s_op
             s_fcf_m = generate_series("fcf_margin", "fcf_margin")
             if s_fcf_m is not None: df_res["FCF 마진 (%)"] = s_fcf_m
-            s_pfcf = generate_series("p_fcf", "p_fcf")
+            s_pfcf = generate_series("p_fcf", "p_fcf", is_price_direct=True)
             if s_pfcf is not None: df_res["P / FCF (배)"] = s_pfcf
             s_de = generate_series("debt_to_equity", "debt_to_equity")
             if s_de is not None: df_res["부채비율 (%)"] = s_de
             s_cap = generate_series("capex_ratio", "capex_ratio")
             if s_cap is not None: df_res["설비투자부담률 (%)"] = s_cap
-            s_div = generate_series("div_yield", "div_yield")
+            s_div = generate_series("div_yield", "div_yield", is_price_inverse=True)
             if s_div is not None: df_res["배당수익률 (%)"] = s_div
         else:
             s_roe = generate_series("roe", "roe")
@@ -696,7 +696,7 @@ def get_3y_factor_trends(ticker, current_ratios, eps_opt, bps_opt, is_financial,
             if s_net is not None: df_res["당기순이익률 (%)"] = s_net
             s_de = generate_series("debt_to_equity", "debt_to_equity")
             if s_de is not None: df_res["부채비율 (%)"] = s_de
-            s_div = generate_series("div_yield", "div_yield")
+            s_div = generate_series("div_yield", "div_yield", is_price_inverse=True)
             if s_div is not None: df_res["배당수익률 (%)"] = s_div
             s_pay = generate_series("payout_ratio", "payout_ratio")
             if s_pay is not None: df_res["배당성향 (%)"] = s_pay
@@ -777,25 +777,6 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
         with col2:
             st.success("💡 **타겟 기업 PBR (선택한 BPS 반영)**")
             st.metric(label="적용 PBR", value=f"{data['pbr']:.2f} 배")
-
-        # 🔥 [수정됨] 5개년 PER/PBR 가짜 차트 렌더링 코드 우회 및 경고창 표시
-        chart_df = get_5y_historical_chart_data(final_ticker, data["per"], data["pbr"])
-        if chart_df is not None:
-            st.markdown("#### 📈 최근 5개년 PER·PBR 역사적 추이 그래프")
-            t1, t2 = st.tabs(["📈 5개년 PER 궤적 (옵션 연동)", "📊 5개년 PBR 궤적 (옵션 연동)"])
-            with t1: draw_annual_chart(chart_df[["Custom PER (배)", "S&P 500 시장 평균 PER"]], "", "Custom PER (배)", "#ff7f0e")
-            with t2: draw_annual_chart(chart_df[["Custom PBR (배)", "S&P 500 시장 평균 PBR"]], "", "Custom PBR (배)", "#2ca02c")
-            st.write("")
-        else:
-            st.markdown("#### 📈 최근 5개년 PER·PBR 역사적 추이 그래프")
-            st.warning("⚠️ **[실전 운용 무결성 모드 방어]** 무료 API 특성상 5년치 과거의 정확한 EPS/BPS가 실시간으로 소급되지 않습니다. 투자 왜곡을 막기 위해 가짜 데이터 생성을 차단했습니다.")
-            st.write("")
-
-        st.info("""
-        💡 **[PER·PBR 역사적 추이 판독 가이드]**
-        * 📈 **PER (주가수익비율):** 주가가 기업의 1주당 순이익(EPS) 대비 몇 배로 거래되는지 보여줍니다. 과거 5년 궤적 및 S&P 500 시장 평균과 비교하여 현재 주가의 밸류에이션 수준이 저평가인지 고평가인지 판단하는 핵심 척도가 됩니다.
-        * 📊 **PBR (주가순자산비율):** 주가가 기업의 1주당 순자산(BPS) 대비 몇 배인지 나타냅니다. **⚠️ 핵심 포인트: 애플(AAPL)처럼 꾸준히 막대한 자사주를 매입하고 소각하는 기업은 회계상 장부 순자산(자기자본)이 감소하여 PBR이 30배~100배 이상 극단적으로 높게 나오는 것이 지극히 정상입니다.** 따라서 미국 주주환원 우량주를 분석할 때 PBR이 높다고 단순 고평가로 판단해서는 안 되며, 기업의 실질 현금창출력(FCF)과 PER을 함께 검증해야 합니다.
-        """)
 
         st.divider()
 
@@ -882,7 +863,7 @@ if main_nav == "🏢 1. 개별 종목 정밀 터미널":
                         with row_cols[j]:
                             draw_small_factor_chart(factor_3y_df[[cols[idx]]], cols[idx], colors[idx % len(colors)])
         else:
-            st.warning("⚠️ **[무료 API 한계 방어]** 과거 3년 팩터 추이를 생성하기 위한 정확한 실제 데이터가 부족하여 가상 데이터 생성을 차단했습니다.")
+            st.warning("⚠️ 과거 3년 팩터 추이 데이터를 생성하지 못했습니다.")
 
         st.write("")
         st.divider()
@@ -924,7 +905,6 @@ elif main_nav == "⚖️ 2. 관심종목 10대 팩터 비교 스캐너":
     else:
         comp_data = {}
         
-        # 🔥 [수정됨] concurrent.futures를 활용한 병렬 스캐닝 처리 가속
         with st.spinner(f"선택한 {len(watchlist_tickers)}개 종목의 SEC 원물 장부 데이터를 병렬로 고속 취합 중입니다..."):
             
             def fetch_symbol_data(sym):
@@ -945,7 +925,6 @@ elif main_nav == "⚖️ 2. 관심종목 10대 팩터 비교 스캐너":
                     except Exception as exc:
                         results[sym] = (None, None)
             
-            # 원래 사용자가 지정한 종목 순서를 그대로 표기하기 위해 순차적으로 결과 정리
             for sym in watchlist_tickers:
                 res, r = results.get(sym, (None, None))
                 if res:
